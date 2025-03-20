@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: love
+      POSTGRES_DB: snowflake
+    ports:
+      - '5432:5432'
+    volumes:
+      - './db/:/docker-entrypoint-initdb.d/'
+      - './BigDataSnowflake/data:/data'
+      - './script:/script'
+    command: >
+      -c work_mem=256MB
+      -c maintenance_work_mem=256MB
+      -c max_wal_size=1GB
+    # healthcheck:
+    #   test: ["CMD-SHELL", "pg_isready -U postgres"]
+    #   interval: 5s
+    #   retries: 5
+    #   start_period: 5s
+    #   timeout: 2s
