@@ -1,0 +1,96 @@
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: love
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./BigDataSpark/data:/dataset
+      - './prepare/:/docker-entrypoint-initdb.d/'
+      - './db/:/docker-entrypoint-initdb.d/'
+    command: >
+      -c work_mem=256MB
+      -c maintenance_work_mem=256MB
+      -c max_wal_size=1GB
+    networks:
+      - netlab2
+
+  spark-master:
+    image: bitnami/spark:3
+    # build:
+    #   context: .
+    #   dockerfile: ./Dockerfile
+    container_name: spark-master
+    environment:
+      - SPARK_MODE=master
+      - SPARK_MASTER_HOST=spark-master
+      - SPARK_NO_DAEMONIZE=yes
+      - HOME=/tmp
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+    volumes:
+      - ./scripts:/opt/spark-apps
+      - ./jars:/opt/jars
+    depends_on:
+      - postgres
+      - mongodb
+    networks:
+      - netlab2
+
+  spark-worker:
+    image: bitnami/spark:3
+    # build:
+    #   context: .
+    #   dockerfile: ./Dockerfile
+    container_name: spark-worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+      - SPARK_NO_DAEMONIZE=yes
+    depends_on:
+      - spark-master
+      - mongodb
+    volumes:
+      - ./scripts:/opt/spark-apps
+      - ./jars:/opt/jars
+    networks:
+      - netlab2
+
+  clickhouse:
+    image: yandex/clickhouse-server:latest
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    networks:
+      - netlab2
+
+  # cassandra:
+  #   image: cassandra:4.0
+  #   ports:
+  #     - "9042:9042"
+  #   networks:
+  #     - localnet
+
+  mongodb:
+    image: mongo:5.0
+    container_name: mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - netlab2
+
+volumes:
+  pgdata:
+  mongo_data:
+
+networks:
+  netlab2:
+    driver: bridge
